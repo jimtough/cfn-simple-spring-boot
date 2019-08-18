@@ -1,0 +1,58 @@
+---
+Resources:
+  KitchenSinkS3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      # AccelerateConfiguration:
+      #   AccelerateConfiguration
+      # AccessControl: PublicRead
+      # AnalyticsConfigurations:
+      #   - AnalyticsConfiguration
+      #BucketEncryption:
+      #  ServerSideEncryptionConfiguration:
+      #  - ServerSideEncryptionByDefault:
+      #      SSEAlgorithm: aws:kms
+      #      KMSMasterKeyID: arn:aws:kms:us-east-1:123456789012:key/9010425e-f447-41ef-ba5d-cf30aa5f69bb
+      BucketName: kitchen-sink
+      # CorsConfiguration:
+      #   CorsConfiguration
+      # InventoryConfigurations:
+      #   - InventoryConfiguration
+      LifecycleConfiguration:
+        Rules:
+        # the two rules below could easily be combined into one rule
+        - Id: my-expiration-rule
+          Status: Enabled
+          ExpirationInDays: 720
+        - Id: my-transition-rule
+          Status: Enabled
+          Transitions:
+          - StorageClass: GLACIER
+            TransitionInDays: 7
+      # LoggingConfiguration:
+      #   LoggingConfiguration
+      # MetricsConfigurations:
+      #   - MetricsConfiguration
+      # NotificationConfiguration:
+      #   NotificationConfiguration
+      # ObjectLockConfiguration:
+      #   ObjectLockConfiguration
+      # ObjectLockEnabled: Boolean
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+      # ReplicationConfiguration:
+      #   ReplicationConfiguration
+      Tags:
+        -
+          Key: "foo"
+          Value: "bar"
+        -
+          Key: "keymaster"
+          Value: "gatekeeper"
+      # VersioningConfiguration:
+      #   VersioningConfiguration
+      # WebsiteConfiguration:
+      #   WebsiteConfiguration
