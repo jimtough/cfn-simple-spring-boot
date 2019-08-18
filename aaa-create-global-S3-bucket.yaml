@@ -1,7 +1,19 @@
 ---
+
+Parameters:
+  FileExpirationInDays:
+    Description: How many days until a file in this bucket is deleted?
+    Type: Number
+    MinValue: 1
+    # 5 x 365
+    MaxValue: 1825
+    Default: 1825
+
 Resources:
-  KitchenSinkS3Bucket:
+  TheKitchenSinkS3Bucket:
     Type: AWS::S3::Bucket
+    # Protect from accidental stack deletion
+    DeletionPolicy: Retain
     Properties:
       # AccelerateConfiguration:
       #   AccelerateConfiguration
@@ -20,15 +32,9 @@ Resources:
       #   - InventoryConfiguration
       LifecycleConfiguration:
         Rules:
-        # the two rules below could easily be combined into one rule
-        - Id: my-expiration-rule
+        - Id: my-lifecycle-rules
           Status: Enabled
-          ExpirationInDays: 720
-        - Id: my-transition-rule
-          Status: Enabled
-          Transitions:
-          - StorageClass: GLACIER
-            TransitionInDays: 7
+          ExpirationInDays: !Ref FileExpirationInDays
       # LoggingConfiguration:
       #   LoggingConfiguration
       # MetricsConfigurations:
@@ -56,3 +62,10 @@ Resources:
       #   VersioningConfiguration
       # WebsiteConfiguration:
       #   WebsiteConfiguration
+
+Outputs:
+  TheGlobalDefaultS3Bucket:
+    Description: My default S3 bucket when a CloudFormation scripts needs a bucket for something quick and dirty
+    Value: !Ref TheKitchenSinkS3Bucket
+    Export:
+      Name: GlobalDefaultS3Bucket
