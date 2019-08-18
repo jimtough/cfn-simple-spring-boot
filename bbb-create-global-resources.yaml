@@ -27,6 +27,22 @@ Resources:
       Tags:
       - Key: Name
         Value: !Sub ${VPCNameTag}-igw
+  myStackCreatedRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:
+        Ref: myStackCreatedVPC
+      Tags:
+      - Key: Name
+        Value: !Sub ${VPCNameTag}-rtb
+  myStackCreatedRouteA:
+    Type: AWS::EC2::Route
+    Properties:
+       RouteTableId:
+         Ref: myStackCreatedRouteTable
+       DestinationCidrBlock: 0.0.0.0/0
+       GatewayId:
+         Ref: myStackCreatedInternetGateway
   myStackCreatedInternetGatewayAttachment:
     Type: AWS::EC2::VPCGatewayAttachment
     Properties:
