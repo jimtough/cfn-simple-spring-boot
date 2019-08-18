@@ -5,6 +5,7 @@ Parameters:
     Type: String
     Default: stack-created-vpc
 
+
 Resources:
   MyStackCreatedVPC:
     Type: 'AWS::EC2::VPC'
@@ -20,6 +21,31 @@ Resources:
          Value: !Ref AWS::StackName
        - Key: creator-stack-id
          Value: !Ref AWS::StackId
+  MyStackCreatedSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      #AssignIpv6AddressOnCreation: Boolean
+      AvailabilityZone: !Sub ${AWS::Region}a
+      CidrBlock: 192.168.1.0/24
+      #Ipv6CidrBlock: String
+      #MapPublicIpOnLaunch: Boolean
+      Tags:
+       - Key: Name
+         Value: !Sub ${VPCNameTag} subnet A
+      VpcId: !Ref MyStackCreatedVPC
+  MyStackCreatedSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      #AssignIpv6AddressOnCreation: Boolean
+      AvailabilityZone: !Sub ${AWS::Region}b
+      CidrBlock: 192.168.2.0/24
+      #Ipv6CidrBlock: String
+      #MapPublicIpOnLaunch: Boolean
+      Tags:
+       - Key: Name
+         Value: !Sub ${VPCNameTag} subnet B
+      VpcId: !Ref MyStackCreatedVPC
+
 
 Outputs:
   MyStackCreatedVPCOutput:
@@ -27,3 +53,13 @@ Outputs:
     Description: VPC id of my stack-created VPC
     Export:
       Name: StackCreatedVPC
+  MyStackCreatedSubnetAOutput:
+    Value: !Ref MyStackCreatedSubnetA
+    Description: Subnet id of my stack-created Subnet A
+    Export:
+      Name: StackCreatedSubnetA
+  MyStackCreatedSubnetBOutput:
+    Value: !Ref MyStackCreatedSubnetB
+    Description: Subnet id of my stack-created Subnet B
+    Export:
+      Name: StackCreatedSubnetB
