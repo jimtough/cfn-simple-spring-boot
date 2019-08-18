@@ -7,7 +7,7 @@ Parameters:
 
 
 Resources:
-  MyStackCreatedVPC:
+  myStackCreatedVPC:
     Type: 'AWS::EC2::VPC'
     Properties:
       CidrBlock: 192.168.0.0/16
@@ -15,13 +15,24 @@ Resources:
       EnableDnsHostnames: 'true'
       InstanceTenancy: default
       Tags:
-       - Key: Name
-         Value: !Ref VPCNameTag
-       - Key: creator-stack-name
-         Value: !Ref AWS::StackName
-       - Key: creator-stack-id
-         Value: !Ref AWS::StackId
-  MyStackCreatedSubnetA:
+      - Key: Name
+        Value: !Ref VPCNameTag
+      - Key: creator-stack-name
+        Value: !Ref AWS::StackName
+      - Key: creator-stack-id
+        Value: !Ref AWS::StackId
+  myStackCreatedInternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+      - Key: Name
+        Value: !Sub ${VPCNameTag}-igw
+  myStackCreatedInternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref myStackCreatedVPC
+      InternetGatewayId: !Ref myStackCreatedInternetGateway
+  myStackCreatedSubnetA:
     Type: AWS::EC2::Subnet
     Properties:
       #AssignIpv6AddressOnCreation: Boolean
@@ -30,10 +41,10 @@ Resources:
       #Ipv6CidrBlock: String
       #MapPublicIpOnLaunch: Boolean
       Tags:
-       - Key: Name
-         Value: !Sub ${VPCNameTag} subnet A
-      VpcId: !Ref MyStackCreatedVPC
-  MyStackCreatedSubnetB:
+      - Key: Name
+        Value: !Sub ${VPCNameTag} subnet A
+      VpcId: !Ref myStackCreatedVPC
+  myStackCreatedSubnetB:
     Type: AWS::EC2::Subnet
     Properties:
       #AssignIpv6AddressOnCreation: Boolean
@@ -44,22 +55,22 @@ Resources:
       Tags:
        - Key: Name
          Value: !Sub ${VPCNameTag} subnet B
-      VpcId: !Ref MyStackCreatedVPC
+      VpcId: !Ref myStackCreatedVPC
 
 
 Outputs:
   MyStackCreatedVPCOutput:
-    Value: !Ref MyStackCreatedVPC
+    Value: !Ref myStackCreatedVPC
     Description: VPC id of my stack-created VPC
     Export:
       Name: StackCreatedVPC
   MyStackCreatedSubnetAOutput:
-    Value: !Ref MyStackCreatedSubnetA
+    Value: !Ref myStackCreatedSubnetA
     Description: Subnet id of my stack-created Subnet A
     Export:
       Name: StackCreatedSubnetA
   MyStackCreatedSubnetBOutput:
-    Value: !Ref MyStackCreatedSubnetB
+    Value: !Ref myStackCreatedSubnetB
     Description: Subnet id of my stack-created Subnet B
     Export:
       Name: StackCreatedSubnetB
