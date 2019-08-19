@@ -4,6 +4,11 @@ Parameters:
     Description: Name tag that will be assigned to the VPC
     Type: String
     Default: stack-created-vpc
+    AllowedValues:
+    - stack-created-vpc
+    - my-vpc
+    - custom-vpc
+    - toothbrush
 
 
 Resources:
@@ -21,6 +26,30 @@ Resources:
         Value: !Ref AWS::StackName
       - Key: creator-stack-id
         Value: !Ref AWS::StackId
+  myStackCreatedSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      #AssignIpv6AddressOnCreation: Boolean
+      AvailabilityZone: !Sub ${AWS::Region}a
+      CidrBlock: 192.168.1.0/24
+      #Ipv6CidrBlock: String
+      #MapPublicIpOnLaunch: Boolean
+      Tags:
+      - Key: Name
+        Value: !Sub ${VPCNameTag}-subnet-a
+      VpcId: !Ref myStackCreatedVPC
+  myStackCreatedSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      #AssignIpv6AddressOnCreation: Boolean
+      AvailabilityZone: !Sub ${AWS::Region}b
+      CidrBlock: 192.168.2.0/24
+      #Ipv6CidrBlock: String
+      #MapPublicIpOnLaunch: Boolean
+      Tags:
+       - Key: Name
+         Value: !Sub ${VPCNameTag}-subnet-a
+      VpcId: !Ref myStackCreatedVPC
   myStackCreatedInternetGateway:
     Type: AWS::EC2::InternetGateway
     Properties:
@@ -48,30 +77,20 @@ Resources:
     Properties:
       VpcId: !Ref myStackCreatedVPC
       InternetGatewayId: !Ref myStackCreatedInternetGateway
-  myStackCreatedSubnetA:
-    Type: AWS::EC2::Subnet
+  myStackCreatedSubnetRouteTableAssociationA:
+    Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
-      #AssignIpv6AddressOnCreation: Boolean
-      AvailabilityZone: !Sub ${AWS::Region}a
-      CidrBlock: 192.168.1.0/24
-      #Ipv6CidrBlock: String
-      #MapPublicIpOnLaunch: Boolean
-      Tags:
-      - Key: Name
-        Value: !Sub ${VPCNameTag} subnet A
-      VpcId: !Ref myStackCreatedVPC
-  myStackCreatedSubnetB:
-    Type: AWS::EC2::Subnet
+      RouteTableId:
+        Ref: myStackCreatedRouteTable
+      SubnetId:
+        Ref: myStackCreatedSubnetA
+  myStackCreatedSubnetRouteTableAssociationB:
+    Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
-      #AssignIpv6AddressOnCreation: Boolean
-      AvailabilityZone: !Sub ${AWS::Region}b
-      CidrBlock: 192.168.2.0/24
-      #Ipv6CidrBlock: String
-      #MapPublicIpOnLaunch: Boolean
-      Tags:
-       - Key: Name
-         Value: !Sub ${VPCNameTag} subnet B
-      VpcId: !Ref myStackCreatedVPC
+      RouteTableId:
+        Ref: myStackCreatedRouteTable
+      SubnetId:
+        Ref: myStackCreatedSubnetB
 
 
 Outputs:
