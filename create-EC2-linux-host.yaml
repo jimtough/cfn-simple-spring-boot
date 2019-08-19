@@ -1,4 +1,12 @@
 ---
+Mappings:
+  AmazonLinuxDeveloperAMI:
+    us-east-1:
+      amiId: ami-035b3c7efe6d061d5
+    ca-central-1:
+      amiId: ami-0a67d15f2858e33cb
+
+
 Parameters:
   KeyPairName:
     # On CloudFormation console, will display dropdown list of keypairs for account
@@ -12,7 +20,7 @@ Resources:
     Type: AWS::EC2::Instance
     Properties:
       AvailabilityZone: us-east-1a
-      ImageId: ami-035b3c7efe6d061d5
+      ImageId: !FindInMap [AmazonLinuxDeveloperAMI, !Ref 'AWS::Region', amiId]
       InstanceType: t2.micro
       KeyName:
         Ref: KeyPairName
@@ -21,7 +29,7 @@ Resources:
       SubnetId: !ImportValue StackCreatedSubnetA
       Tags:
       - Key: Name
-        Value: stack-created-vpc-ec2-instance
+        Value: stack-created-ec2-instance
   mySecurityGroupForSshAndHttp:
     Type: AWS::EC2::SecurityGroup
     Properties:
