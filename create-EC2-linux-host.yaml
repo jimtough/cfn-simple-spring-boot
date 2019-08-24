@@ -18,6 +18,54 @@ Parameters:
 Resources:
   myEC2Instance:
     Type: AWS::EC2::Instance
+    Metadata:
+      AWS::CloudFormation::Init:
+        config:
+          # packages:
+          #   :
+          # groups:
+          #   :
+          # users:
+          #   :
+          sources:
+            "/home/ec2-user/aws-cli": "https://github.com/aws/aws-cli/tarball/master"
+          files:
+            "/etc/cfn/cfn-hup.conf":
+              content: !Sub |
+                [main]
+                stack=${AWS::StackName}
+                region=${AWS::Region}
+                interval=1
+                verbose=true
+              mode: "000400"
+              owner: "root"
+              group: "root"
+            "/etc/cfn/hooks.d/cfn-auto-reloader.conf":
+              content: !Sub |
+                [cfn-auto-reloader-hook]
+                triggers=post.update
+                path=Resources.myEC2Instance.Metadata.AWS::CloudFormation::Init
+                action=/opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource myEC2Instance --region ${AWS::Region}
+              mode: "000400"
+              owner: "root"
+              group: "root"
+          commands:
+            testCommandA:
+              command: "echo \"$MAGIC2\" > test2.txt"
+              env:
+                MAGIC2: "I come from the environment!"
+              cwd: "~"
+              test: "test ! -e ~/test2.txt"
+              ignoreErrors: "false"
+            testCommandB:
+              command: "echo \"This is some bullcrap here!\" > bullcrap.txt"
+              cwd: "/root"
+              ignoreErrors: "false"
+          # services:
+          #   :
+    #CreationPolicy:
+    #  ResourceSignal:
+    #    Timeout: PT2M
     Properties:
       AvailabilityZone: us-east-1a
       ImageId: !FindInMap [AmazonLinuxDeveloperAMI, !Ref 'AWS::Region', amiId]
@@ -30,6 +78,30 @@ Resources:
       Tags:
       - Key: Name
         Value: stack-created-ec2-instance
+      UserData:
+        "Fn::Base64":
+          !Sub |
+            #!/bin/bash -xe
+            # Get the latest CloudFormation package
+            yum update -y aws-cfn-bootstrap
+            # Start cfn-init
+            #/opt/aws/bin/cfn-init -v -s ${AWS::StackId} -r myEC2Instance --region ${AWS::Region} || error_exit 'Failed to run cfn-init'
+            /opt/aws/bin/cfn-init -v -s ${AWS::StackName} -r myEC2Instance --region ${AWS::Region} || error_exit 'Failed to run cfn-init'
+            # Start up the cfn-hup daemon to listen for changes to the EC2 instance metadata
+            /opt/aws/bin/cfn-hup -v || error_exit 'Failed to start cfn-hup'
+
+            #--------------------------------------
+            #
+            # THIS PART IS NOT WORKING AS EXPECTED!
+            #  The signal is not being received, so
+            #  the CreationPolicy always fails.
+            #
+            # All done so signal success
+            /opt/aws/bin/cfn-signal --success true --stack ${AWS::StackName} --resource myEC2Instance --region ${AWS::Region}
+            #/opt/aws/bin/cfn-signal --exit-code $? --stack ${AWS::StackName} --resource myEC2Instance --region ${AWS::Region}
+            #/opt/aws/bin/cfn-signal --exit-code $? --stack ${AWS::StackId} --resource myEC2Instance --region ${AWS::Region}
+            #/opt/aws/bin/cfn-signal --exit-code 0 --stack ${AWS::StackId} --resource myEC2Instance --region ${AWS::Region}
+            #--------------------------------------
   mySecurityGroupForSshAndHttp:
     Type: AWS::EC2::SecurityGroup
     Properties:
