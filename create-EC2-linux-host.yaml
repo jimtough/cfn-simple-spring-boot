@@ -35,8 +35,6 @@ Resources:
                 [main]
                 stack=${AWS::StackName}
                 region=${AWS::Region}
-                interval=1
-                verbose=true
               mode: "000400"
               owner: "root"
               group: "root"
@@ -63,18 +61,20 @@ Resources:
               ignoreErrors: "false"
           # services:
           #   :
-    #CreationPolicy:
-    #  ResourceSignal:
-    #    Timeout: PT2M
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT3M
     Properties:
-      AvailabilityZone: us-east-1a
+      # Stop using my custom VPC - it created too many access issues
+      #AvailabilityZone: us-east-1a
       ImageId: !FindInMap [AmazonLinuxDeveloperAMI, !Ref 'AWS::Region', amiId]
       InstanceType: t2.micro
       KeyName:
         Ref: KeyPairName
       SecurityGroupIds:
         - !Ref mySecurityGroupForSshAndHttp
-      SubnetId: !ImportValue StackCreatedSubnetA
+      # Stop using my custom VPC - it created too many access issues
+      #SubnetId: !ImportValue StackCreatedSubnetA
       Tags:
       - Key: Name
         Value: stack-created-ec2-instance
@@ -84,6 +84,10 @@ Resources:
             #!/bin/bash -xe
             # Get the latest CloudFormation package
             yum update -y aws-cfn-bootstrap
+
+            # Cloud init logs on the created EC2 can be found here:
+            #    /var/log/cloud-init-output.log
+
             # Start cfn-init
             #/opt/aws/bin/cfn-init -v -s ${AWS::StackId} -r myEC2Instance --region ${AWS::Region} || error_exit 'Failed to run cfn-init'
             /opt/aws/bin/cfn-init -v -s ${AWS::StackName} -r myEC2Instance --region ${AWS::Region} || error_exit 'Failed to run cfn-init'
@@ -97,11 +101,19 @@ Resources:
             #  the CreationPolicy always fails.
             #
             # All done so signal success
-            /opt/aws/bin/cfn-signal --success true --stack ${AWS::StackName} --resource myEC2Instance --region ${AWS::Region}
-            #/opt/aws/bin/cfn-signal --exit-code $? --stack ${AWS::StackName} --resource myEC2Instance --region ${AWS::Region}
+            #/opt/aws/bin/cfn-signal --success true --stack ${AWS::StackName} --resource myEC2Instance --region ${AWS::Region}
+            /opt/aws/bin/cfn-signal --exit-code $? --stack ${AWS::StackName} --resource myEC2Instance --region ${AWS::Region}
             #/opt/aws/bin/cfn-signal --exit-code $? --stack ${AWS::StackId} --resource myEC2Instance --region ${AWS::Region}
             #/opt/aws/bin/cfn-signal --exit-code 0 --stack ${AWS::StackId} --resource myEC2Instance --region ${AWS::Region}
             #--------------------------------------
+
+            # Post-cfn work
+            # Update to Java 8
+            sudo yum install -y java-1.8.0-openjdk.x86_64 || true
+            sudo /usr/sbin/alternatives --set java /usr/lib/jvm/jre-1.8.0-openjdk.x86_64/bin/java || true
+            sudo /usr/sbin/alternatives --set javac /usr/lib/jvm/jre-1.8.0-openjdk.x86_64/bin/javac || true
+            sudo yum remove -y java-1.7.0-openjdk.x86_64 || true
+
   mySecurityGroupForSshAndHttp:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -116,18 +128,19 @@ Resources:
         FromPort: 22
         ToPort: 22
         CidrIp: 0.0.0.0/0
-      VpcId: !ImportValue StackCreatedVPC
+      # Stop using my custom VPC - it created too many access issues
+      #VpcId: !ImportValue StackCreatedVPC
 
   mySecurityGroupIngressSelfReference:
     Type: 'AWS::EC2::SecurityGroupIngress'
     DependsOn: mySecurityGroupForSshAndHttp
     Properties:
-      GroupId: !Ref mySecurityGroupForSshAndHttp
+      GroupId: !GetAtt mySecurityGroupForSshAndHttp.GroupId
       # -1 means ALL
       IpProtocol: -1
       #FromPort: '5000'
       #ToPort: '5000'
-      SourceSecurityGroupId: !Ref mySecurityGroupForSshAndHttp
+      SourceSecurityGroupId: !GetAtt mySecurityGroupForSshAndHttp.GroupId
 
   myElasticIpForEC2Instance:
     Type: AWS::EC2::EIP
