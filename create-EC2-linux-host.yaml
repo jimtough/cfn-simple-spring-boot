@@ -82,6 +82,15 @@ Resources:
         "Fn::Base64":
           !Sub |
             #!/bin/bash -xe
+
+            #------------------------------------------------------------------
+            # This block is all about executing the CloudFormation metadata
+            # updates via the cfn-init script call below. The cfn-hup script
+            # call is then supposed to block until all the metadata updates
+            # are completed. Finally, the cfn-signal script call will signal
+            # CloudFormation that this resource (the EC2 server) has finished
+            # being created.
+            #------------------------------------------------------------------
             # Get the latest CloudFormation package
             yum update -y aws-cfn-bootstrap
 
@@ -93,19 +102,9 @@ Resources:
             /opt/aws/bin/cfn-init -v -s ${AWS::StackName} -r myEC2Instance --region ${AWS::Region} || error_exit 'Failed to run cfn-init'
             # Start up the cfn-hup daemon to listen for changes to the EC2 instance metadata
             /opt/aws/bin/cfn-hup -v || error_exit 'Failed to start cfn-hup'
-
-            #--------------------------------------
-            #
-            # THIS PART IS NOT WORKING AS EXPECTED!
-            #  The signal is not being received, so
-            #  the CreationPolicy always fails.
-            #
             # All done so signal success
-            #/opt/aws/bin/cfn-signal --success true --stack ${AWS::StackName} --resource myEC2Instance --region ${AWS::Region}
             /opt/aws/bin/cfn-signal --exit-code $? --stack ${AWS::StackName} --resource myEC2Instance --region ${AWS::Region}
-            #/opt/aws/bin/cfn-signal --exit-code $? --stack ${AWS::StackId} --resource myEC2Instance --region ${AWS::Region}
-            #/opt/aws/bin/cfn-signal --exit-code 0 --stack ${AWS::StackId} --resource myEC2Instance --region ${AWS::Region}
-            #--------------------------------------
+            #------------------------------------------------------------------
 
             # Post-cfn work
             # Update to Java 8
@@ -113,6 +112,10 @@ Resources:
             sudo /usr/sbin/alternatives --set java /usr/lib/jvm/jre-1.8.0-openjdk.x86_64/bin/java || true
             sudo /usr/sbin/alternatives --set javac /usr/lib/jvm/jre-1.8.0-openjdk.x86_64/bin/javac || true
             sudo yum remove -y java-1.7.0-openjdk.x86_64 || true
+
+            # NOT WORKING YET... need to figure out authentication stuff...
+            # Copy test app from S3 bucket to server
+            aws s3 cp s3://kitchen-sink/simple-spring-boot-app.jar .
 
   mySecurityGroupForSshAndHttp:
     Type: AWS::EC2::SecurityGroup
@@ -146,3 +149,17 @@ Resources:
     Type: AWS::EC2::EIP
     Properties:
       InstanceId: !Ref myEC2Instance
+
+  myRoute53DNSRecord:
+    Type: AWS::Route53::RecordSet
+    DependsOn: myElasticIpForEC2Instance
+    Properties:
+      HostedZoneName: 'adultmalehuman.org.'
+      Comment: DNS name for my instance.
+      #Name: !Join ['', [!Ref 'myEC2Instance', ., !Ref 'AWS::Region', ., 'adultmalehuman.org']]
+      Name: 'ec2.adultmalehuman.org'
+      Type: A
+      #TTL: '900'
+      TTL: '300'
+      ResourceRecords:
+      - !GetAtt myEC2Instance.PublicIp
