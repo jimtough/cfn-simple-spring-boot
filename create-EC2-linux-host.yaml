@@ -117,6 +117,18 @@ Resources:
         ToPort: 22
         CidrIp: 0.0.0.0/0
       VpcId: !ImportValue StackCreatedVPC
+
+  mySecurityGroupIngressSelfReference:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    DependsOn: mySecurityGroupForSshAndHttp
+    Properties:
+      GroupId: !Ref mySecurityGroupForSshAndHttp
+      # -1 means ALL
+      IpProtocol: -1
+      #FromPort: '5000'
+      #ToPort: '5000'
+      SourceSecurityGroupId: !Ref mySecurityGroupForSshAndHttp
+
   myElasticIpForEC2Instance:
     Type: AWS::EC2::EIP
     Properties:
