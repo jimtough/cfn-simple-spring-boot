@@ -12,6 +12,12 @@ Parameters:
 
 
 Resources:
+  #----------------------------------------------------------------------------
+  # This block is all related to creation of a custom VPC.
+  # NOTE: I've found that using a non-default VPC can cause several problems
+  #       later on that are difficult to diagnose. For now, I will probably
+  #       not use this VPC. It was still fun to build it out. :)
+  #----------------------------------------------------------------------------
   myStackCreatedVPC:
     Type: 'AWS::EC2::VPC'
     Properties:
@@ -91,6 +97,46 @@ Resources:
         Ref: myStackCreatedRouteTable
       SubnetId:
         Ref: myStackCreatedSubnetB
+  #----------------------------------------------------------------------------
+  # This block is all related to creation of a reusable EC2 instance profile.
+  #----------------------------------------------------------------------------
+  myIAMRootRoleForEc2InstanceProfiles:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+              Service:
+                - "ec2.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Path: "/"
+      RoleName: !Join ['', [!Ref 'AWS::Region', -, 'RootRoleForEc2InstanceProfiles']]
+  myIAMRootRoleForEc2InstanceProfilesPolicies:
+    Type: "AWS::IAM::Policy"
+    Properties:
+      PolicyName: "root"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Action: "*"
+            Resource: "*"
+      Roles:
+        -
+          Ref: "myIAMRootRoleForEc2InstanceProfiles"
+  myIAMRootRoleInstanceProfile:
+    Type: "AWS::IAM::InstanceProfile"
+    Properties:
+      Path: "/"
+      Roles:
+        -
+          Ref: "myIAMRootRoleForEc2InstanceProfiles"
+  #----------------------------------------------------------------------------
 
 
 Outputs:
@@ -109,3 +155,13 @@ Outputs:
     Description: Subnet id of my stack-created Subnet B
     Export:
       Name: StackCreatedSubnetB
+  myIAMRootRoleInstanceProfileNameOutput:
+    Value: !Ref myIAMRootRoleInstanceProfile
+    Description: Id of my stack-created EC2 instance profile that grants full access rights
+    Export:
+      Name: IAMRootRoleInstanceProfileName
+  myIAMRootRoleInstanceProfileArnOutput:
+    Value: !GetAtt myIAMRootRoleInstanceProfile.Arn
+    Description: ARN of my stack-created EC2 instance profile that grants full access rights
+    Export:
+      Name: IAMRootRoleInstanceProfileArn
