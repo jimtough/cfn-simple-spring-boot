@@ -18,6 +18,7 @@ Parameters:
 Resources:
   myEC2Instance:
     Type: AWS::EC2::Instance
+    DependsOn: mySecurityGroupIngressSelfReference
     Metadata:
       AWS::CloudFormation::Init:
         config:
@@ -48,17 +49,17 @@ Resources:
               owner: "root"
               group: "root"
           commands:
-            testCommandA:
-              command: "echo \"$MAGIC2\" > test2.txt"
+            cmd01:
+              command: "echo \"$MAGIC\" > test.txt"
               env:
-                MAGIC2: "I come from the environment!"
+                MAGIC: "I come from the environment!"
               cwd: "~"
-              test: "test ! -e ~/test2.txt"
+              test: "test ! -e ~/test.txt"
               ignoreErrors: "false"
-            testCommandB:
-              command: "echo \"This is some bullcrap here!\" > bullcrap.txt"
-              cwd: "/root"
-              ignoreErrors: "false"
+            cmd02:
+              command: "mkdir -p /var/app"
+            cmd03:
+              command: "aws s3 cp s3://kitchen-sink/simple-spring-boot-app.jar /var/app/simple-spring-boot-app.jar"
           # services:
           #   :
     CreationPolicy:
@@ -67,6 +68,7 @@ Resources:
     Properties:
       # Stop using my custom VPC - it created too many access issues
       #AvailabilityZone: us-east-1a
+      IamInstanceProfile: !ImportValue IAMRootRoleInstanceProfileName
       ImageId: !FindInMap [AmazonLinuxDeveloperAMI, !Ref 'AWS::Region', amiId]
       InstanceType: t2.micro
       KeyName:
@@ -113,9 +115,9 @@ Resources:
             sudo /usr/sbin/alternatives --set javac /usr/lib/jvm/jre-1.8.0-openjdk.x86_64/bin/javac || true
             sudo yum remove -y java-1.7.0-openjdk.x86_64 || true
 
-            # NOT WORKING YET... need to figure out authentication stuff...
-            # Copy test app from S3 bucket to server
-            aws s3 cp s3://kitchen-sink/simple-spring-boot-app.jar .
+            # TODO Stop doing this and setup my app as a Linux service
+            # Run Simple Spring Boot app in the background (NOTE: needs Java 8)
+            java -jar /var/app/simple-spring-boot-app.jar &
 
   mySecurityGroupForSshAndHttp:
     Type: AWS::EC2::SecurityGroup
@@ -124,12 +126,21 @@ Resources:
       GroupName: sec-grp-for-ssh-and-http-to-my-ec2
       SecurityGroupIngress:
       - IpProtocol: tcp
+        FromPort: 8080
+        ToPort: 8080
+        CidrIp: 0.0.0.0/0
+      - IpProtocol: tcp
         FromPort: 80
         ToPort: 80
         CidrIp: 0.0.0.0/0
       - IpProtocol: tcp
         FromPort: 22
         ToPort: 22
+        CidrIp: 0.0.0.0/0
+      # enable ping (should probably remove later)
+      - IpProtocol: icmp
+        FromPort: 8
+        ToPort: -1
         CidrIp: 0.0.0.0/0
       # Stop using my custom VPC - it created too many access issues
       #VpcId: !ImportValue StackCreatedVPC
