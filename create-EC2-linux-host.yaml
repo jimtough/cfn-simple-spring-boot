@@ -14,8 +14,33 @@ Parameters:
     Type: AWS::EC2::KeyPair::KeyName
     ConstraintDescription: Must be the name of an existing EC2 KeyPair
 
+  AvailabilityZoneForEC2InstanceAndVolume:
+    Description: Which AZ should be used for the EC2 instance and its volume?
+    Type: String
+    Default: us-east-1a
+    AllowedValues:
+    - us-east-1a
+    - us-east-1b
+    - us-east-1c
+    - us-east-1d
+    - us-east-1e
+    - us-east-1f
+
 
 Resources:
+
+  myVolume:
+    Type: AWS::EC2::Volume
+    Properties:
+      Size: 1
+      AvailabilityZone:
+        Ref: AvailabilityZoneForEC2InstanceAndVolume
+      Tags:
+        - Key: Name
+          Value: volume-attached-to-my-EC-linux-instance
+    #DeletionPolicy: Snapshot
+    DeletionPolicy: Delete
+
   myEC2Instance:
     Type: AWS::EC2::Instance
     DependsOn: mySecurityGroupIngressSelfReference
@@ -57,17 +82,18 @@ Resources:
               test: "test ! -e ~/test.txt"
               ignoreErrors: "false"
             cmd02:
-              command: "mkdir -p /var/app"
-            cmd03:
-              command: "aws s3 cp s3://kitchen-sink/simple-spring-boot-app.jar /var/app/simple-spring-boot-app.jar"
+              # Copy Simple Spring Boot app from S3 bucket into /root
+              # temporarily, and then move it to its final destination
+              # via UserData commands
+              command: "aws s3 cp s3://kitchen-sink/simple-spring-boot-app.jar /root/simple-spring-boot-app.jar"
           # services:
           #   :
     CreationPolicy:
       ResourceSignal:
         Timeout: PT3M
     Properties:
-      # Stop using my custom VPC - it created too many access issues
-      #AvailabilityZone: us-east-1a
+      AvailabilityZone:
+        Ref: AvailabilityZoneForEC2InstanceAndVolume
       IamInstanceProfile: !ImportValue IAMRootRoleInstanceProfileName
       ImageId: !FindInMap [AmazonLinuxDeveloperAMI, !Ref 'AWS::Region', amiId]
       InstanceType: t2.micro
@@ -80,6 +106,9 @@ Resources:
       Tags:
       - Key: Name
         Value: stack-created-ec2-instance
+      Volumes:
+      - Device: /dev/sdf
+        VolumeId: !Ref myVolume
       UserData:
         "Fn::Base64":
           !Sub |
@@ -109,15 +138,31 @@ Resources:
             #------------------------------------------------------------------
 
             # Post-cfn work
+
+            # create mount point directory
+            mkdir /mnt/sdf
+            # create ext4 filesystem on new volume
+            mkfs -t ext4 /dev/sdf
+            # add an entry to fstab to mount volume during boot
+            echo "/dev/sdf        /mnt/sdf    ext4    defaults,nofail 0       2" >> /etc/fstab
+            # mount the volume on current boot
+            mount -a
+
             # Update to Java 8
             sudo yum install -y java-1.8.0-openjdk.x86_64 || true
             sudo /usr/sbin/alternatives --set java /usr/lib/jvm/jre-1.8.0-openjdk.x86_64/bin/java || true
             sudo /usr/sbin/alternatives --set javac /usr/lib/jvm/jre-1.8.0-openjdk.x86_64/bin/javac || true
             sudo yum remove -y java-1.7.0-openjdk.x86_64 || true
 
+            # Create a symlink (/var/app) that points to /mnt/sdf
+            ln -s /mnt/sdf /var/app
+            # More the Simple Spring Boot app into /var/app
+            mv /root/simple-spring-boot-app.jar /var/app/simple-spring-boot-app.jar
+
             # TODO Stop doing this and setup my app as a Linux service
             # Run Simple Spring Boot app in the background (NOTE: needs Java 8)
             java -jar /var/app/simple-spring-boot-app.jar &
+
 
   mySecurityGroupForSshAndHttp:
     Type: AWS::EC2::SecurityGroup
