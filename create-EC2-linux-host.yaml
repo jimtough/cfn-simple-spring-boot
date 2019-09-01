@@ -49,10 +49,14 @@ Resources:
         config:
           # packages:
           #   :
-          # groups:
-          #   :
-          # users:
-          #   :
+          # FIXME The 'groups' and 'users' setup below breaks the stack every time... why?
+          #groups:
+          #  svcuser: {}
+          #users:
+          #  svcuser:
+          #    groups:
+          #      - "svcuser"
+          #    homeDir: "/tmp"
           sources:
             "/home/ec2-user/aws-cli": "https://github.com/aws/aws-cli/tarball/master"
           files:
@@ -80,7 +84,7 @@ Resources:
                 After=syslog.target
 
                 [Service]
-                User=root
+                User=ec2-user
                 ExecStart=/usr/bin/java -jar /var/app/simple-spring-boot-app.jar
                 SuccessExitStatus=143
 
@@ -173,6 +177,7 @@ Resources:
             ln -s /mnt/sdf /var/app
             # More the Simple Spring Boot app into /var/app
             mv /root/simple-spring-boot-app.jar /var/app/simple-spring-boot-app.jar
+            chmod 755 /var/app/simple-spring-boot-app.jar
 
             # Start my app as a systemd service (defined in metadata above).
             # NOTE: Use this command on the server to see service status:
