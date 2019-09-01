@@ -1,10 +1,10 @@
 ---
 Mappings:
-  AmazonLinuxDeveloperAMI:
+  AmazonLinux2AMI:
     us-east-1:
-      amiId: ami-035b3c7efe6d061d5
+      amiId: ami-0b898040803850657
     ca-central-1:
-      amiId: ami-0a67d15f2858e33cb
+      amiId: ami-XXXXXXXXXXXXXXXXX
 
 
 Parameters:
@@ -95,7 +95,7 @@ Resources:
       AvailabilityZone:
         Ref: AvailabilityZoneForEC2InstanceAndVolume
       IamInstanceProfile: !ImportValue IAMRootRoleInstanceProfileName
-      ImageId: !FindInMap [AmazonLinuxDeveloperAMI, !Ref 'AWS::Region', amiId]
+      ImageId: !FindInMap [AmazonLinux2AMI, !Ref 'AWS::Region', amiId]
       InstanceType: t2.micro
       KeyName:
         Ref: KeyPairName
