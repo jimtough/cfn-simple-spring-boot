@@ -226,6 +226,26 @@ Resources:
       #ToPort: '5000'
       SourceSecurityGroupId: !GetAtt mySecurityGroupForSshAndHttp.GroupId
 
+  myCloudwatchAlarmForCPUUtilization:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: CPU alarm for my EC2 instance
+      #AlarmName: alarm-for-my-ec2-cpu-usage
+      #AlarmActions:
+      #- Ref: "logical name of an AWS::SNS::Topic resource"
+      MetricName: CPUUtilization
+      Namespace: AWS/EC2
+      Statistic: Average
+      Period: '60'
+      EvaluationPeriods: '3'
+      Threshold: '20'
+      ComparisonOperator: GreaterThanThreshold
+      Unit: Percent
+      Dimensions:
+      - Name: InstanceId
+        Value:
+          Ref: myEC2Instance
+
   myElasticIpForEC2Instance:
     Type: AWS::EC2::EIP
     Properties:
