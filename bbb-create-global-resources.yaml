@@ -10,6 +10,16 @@ Parameters:
     - custom-vpc
     - toothbrush
 
+  AlertsSMSEndpointPhoneNumber:
+    Description: Phone number that will receive SMS text message alerts
+    Type: String
+    Default: "+19995550000"
+
+  AlertsEmailEndpointRecipientAddress:
+    Description: Email address that will receive email alerts
+    Type: String
+    Default: "recipient@example.com"
+
 
 Resources:
   #----------------------------------------------------------------------------
@@ -137,6 +147,26 @@ Resources:
         -
           Ref: "myIAMRootRoleForEc2InstanceProfiles"
   #----------------------------------------------------------------------------
+  # This block is all related to creation of an SNS topic for alerts
+  #----------------------------------------------------------------------------
+  mySNSTopicForAlerts:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: "My AWS alerts"
+      TopicName: "my-alerts-topic"
+  mySMSSubscriptionToSNSTopicForAlerts:
+    Type: 'AWS::SNS::Subscription'
+    Properties:
+      TopicArn: !Ref mySNSTopicForAlerts
+      Endpoint: !Ref AlertsSMSEndpointPhoneNumber
+      Protocol: sms
+  myEmailSubscriptionToSNSTopicForAlerts:
+    Type: 'AWS::SNS::Subscription'
+    Properties:
+      TopicArn: !Ref mySNSTopicForAlerts
+      Endpoint: !Ref AlertsEmailEndpointRecipientAddress
+      Protocol: email
+  #----------------------------------------------------------------------------
 
 
 Outputs:
@@ -165,3 +195,13 @@ Outputs:
     Description: ARN of my stack-created EC2 instance profile that grants full access rights
     Export:
       Name: IAMRootRoleInstanceProfileArn
+  mySNSTopicForAlertsArnOutput:
+    Value: !Ref mySNSTopicForAlerts
+    Description: ARN of my stack-created SNS topic that is used for publishing alerts
+    Export:
+      Name: SNSTopicForAlertsARN
+  mySNSTopicForAlertsTopicNameOutput:
+    Value: !GetAtt mySNSTopicForAlerts.TopicName
+    Description: Topic Name of my stack-created SNS topic that is used for publishing alerts
+    Export:
+      Name: SNSTopicForAlertsTopicName

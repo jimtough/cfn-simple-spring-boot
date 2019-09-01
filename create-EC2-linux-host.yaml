@@ -231,7 +231,8 @@ Resources:
     Properties:
       AlarmDescription: CPU alarm for my EC2 instance
       #AlarmName: alarm-for-my-ec2-cpu-usage
-      #AlarmActions:
+      AlarmActions:
+      - !ImportValue SNSTopicForAlertsARN
       #- Ref: "logical name of an AWS::SNS::Topic resource"
       MetricName: CPUUtilization
       Namespace: AWS/EC2
