@@ -73,6 +73,22 @@ Resources:
               mode: "000400"
               owner: "root"
               group: "root"
+            "/etc/systemd/system/simple-spring-boot.service":
+              content: !Sub |
+                [Unit]
+                Description=Simple Spring Boot app
+                After=syslog.target
+
+                [Service]
+                User=root
+                ExecStart=/usr/bin/java -jar /var/app/simple-spring-boot-app.jar
+                SuccessExitStatus=143
+
+                [Install]
+                WantedBy=multi-user.target
+              mode: "000755"
+              owner: "root"
+              group: "root"
           commands:
             cmd01:
               command: "echo \"$MAGIC\" > test.txt"
@@ -152,16 +168,20 @@ Resources:
             sudo yum install -y java-1.8.0-openjdk.x86_64 || true
             sudo /usr/sbin/alternatives --set java /usr/lib/jvm/jre-1.8.0-openjdk.x86_64/bin/java || true
             sudo /usr/sbin/alternatives --set javac /usr/lib/jvm/jre-1.8.0-openjdk.x86_64/bin/javac || true
-            sudo yum remove -y java-1.7.0-openjdk.x86_64 || true
 
             # Create a symlink (/var/app) that points to /mnt/sdf
             ln -s /mnt/sdf /var/app
             # More the Simple Spring Boot app into /var/app
             mv /root/simple-spring-boot-app.jar /var/app/simple-spring-boot-app.jar
 
-            # TODO Stop doing this and setup my app as a Linux service
-            # Run Simple Spring Boot app in the background (NOTE: needs Java 8)
-            java -jar /var/app/simple-spring-boot-app.jar &
+            # Start my app as a systemd service (defined in metadata above).
+            # NOTE: Use this command on the server to see service status:
+            #         sudo systemctl status simple-spring-boot
+            # NOTE: If service fails to start up, this command shows logs:
+            #         sudo journalctl --unit=simple-spring-boot
+            # reference: https://www.digitalocean.com/community/tutorials/how-to-use-systemctl-to-manage-systemd-services-and-units
+            systemctl enable simple-spring-boot.service
+            systemctl start simple-spring-boot.service
 
 
   mySecurityGroupForSshAndHttp:
