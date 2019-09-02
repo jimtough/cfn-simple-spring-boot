@@ -226,27 +226,6 @@ Resources:
       #ToPort: '5000'
       SourceSecurityGroupId: !GetAtt mySecurityGroupForSshAndHttp.GroupId
 
-  myCloudwatchAlarmForCPUUtilization:
-    Type: AWS::CloudWatch::Alarm
-    Properties:
-      AlarmDescription: CPU alarm for my EC2 instance
-      #AlarmName: alarm-for-my-ec2-cpu-usage
-      AlarmActions:
-      - !ImportValue SNSTopicForAlertsARN
-      #- Ref: "logical name of an AWS::SNS::Topic resource"
-      MetricName: CPUUtilization
-      Namespace: AWS/EC2
-      Statistic: Average
-      Period: '60'
-      EvaluationPeriods: '3'
-      Threshold: '20'
-      ComparisonOperator: GreaterThanThreshold
-      Unit: Percent
-      Dimensions:
-      - Name: InstanceId
-        Value:
-          Ref: myEC2Instance
-
   myElasticIpForEC2Instance:
     Type: AWS::EC2::EIP
     Properties:
@@ -265,3 +244,26 @@ Resources:
       TTL: '300'
       ResourceRecords:
       - !GetAtt myEC2Instance.PublicIp
+
+  myCloudwatchAlarmForCPUUtilization:
+    Type: AWS::CloudWatch::Alarm
+    # Do not generate alerts during EC2 initialization - wait until Route53 is set up and the instance can be reached from the internet
+    DependsOn: myRoute53DNSRecord
+    Properties:
+      AlarmDescription: CPU alarm for my EC2 instance
+      #AlarmName: alarm-for-my-ec2-cpu-usage
+      AlarmActions:
+      - !ImportValue SNSTopicForAlertsARN
+      #- Ref: "logical name of an AWS::SNS::Topic resource"
+      MetricName: CPUUtilization
+      Namespace: AWS/EC2
+      Statistic: Average
+      Period: '60'
+      EvaluationPeriods: '3'
+      Threshold: '25'
+      ComparisonOperator: GreaterThanThreshold
+      Unit: Percent
+      Dimensions:
+      - Name: InstanceId
+        Value:
+          Ref: myEC2Instance
