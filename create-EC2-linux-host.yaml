@@ -259,7 +259,7 @@ Resources:
       Namespace: AWS/EC2
       Statistic: Average
       Period: '60'
-      EvaluationPeriods: '3'
+      EvaluationPeriods: '5'
       Threshold: '25'
       ComparisonOperator: GreaterThanThreshold
       Unit: Percent
