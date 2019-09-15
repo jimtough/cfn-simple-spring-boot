@@ -1,4 +1,26 @@
 ---
+Metadata:
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+    - Label:
+        default: 'Custom VPC parameters'
+      Parameters:
+      - VPCNameTag
+    - Label:
+        default: 'Alerting endpoints parameters'
+      Parameters:
+      - AlertsSMSEndpointPhoneNumber
+      - AlertsEmailEndpointRecipientAddress
+    - Label:
+        default: 'RDS Postgres database parameters'
+      Parameters:
+      - RdsPostgresDatabaseName
+      - RdsPostgresEngineVersion
+      - RdsPostgresMasterUsername
+      - RdsPostgresMasterUserPassword
+      - RdsPostgresPort
+      - RdsPostgresPreferredMaintenanceWindow
+
 Parameters:
   VPCNameTag:
     Description: Name tag that will be assigned to the VPC
@@ -19,6 +41,36 @@ Parameters:
     Description: Email address that will receive email alerts
     Type: String
     Default: "recipient@example.com"
+
+  RdsPostgresDatabaseName:
+    Description: Postgres database name used when creating RDS PostgreSQL instance
+    Type: String
+    Default: "postgres"
+
+  RdsPostgresEngineVersion:
+    Description: PostgreSQL version
+    Type: String
+    Default: '10.6'
+    AllowedValues: ['10.9', '10.7', '10.6', '10.5', '10.4', '10.3', '10.1'] # aws rds describe-db-engine-versions --engine postgres --query "DBEngineVersions[].EngineVersion"
+
+  RdsPostgresMasterUsername:
+    Description: 'The master username for the database instance (will be ignored if DBSnapshotIdentifier is set - value used from snapshot)'
+    Type: String
+
+  RdsPostgresMasterUserPassword:
+    Description: 'The master user password for the database instance (will be ignored if DBSnapshotIdentifier is set - value used from snapshot)'
+    Type: String
+    NoEcho: true
+
+  RdsPostgresPort:
+    Description: PostgreSQL version
+    Type: String
+    Default: '5432'
+
+  RdsPostgresPreferredMaintenanceWindow:
+    Description: The weekly time range (in UTC) during which system maintenance can occur.
+    Type: String
+    Default: 'wed:14:00-wed:17:30'
 
 
 Resources:
@@ -45,11 +97,8 @@ Resources:
   myStackCreatedSubnetA:
     Type: AWS::EC2::Subnet
     Properties:
-      #AssignIpv6AddressOnCreation: Boolean
       AvailabilityZone: !Sub ${AWS::Region}a
       CidrBlock: 192.168.1.0/24
-      #Ipv6CidrBlock: String
-      #MapPublicIpOnLaunch: Boolean
       Tags:
       - Key: Name
         Value: !Sub ${VPCNameTag}-subnet-a
@@ -57,11 +106,8 @@ Resources:
   myStackCreatedSubnetB:
     Type: AWS::EC2::Subnet
     Properties:
-      #AssignIpv6AddressOnCreation: Boolean
       AvailabilityZone: !Sub ${AWS::Region}b
       CidrBlock: 192.168.2.0/24
-      #Ipv6CidrBlock: String
-      #MapPublicIpOnLaunch: Boolean
       Tags:
        - Key: Name
          Value: !Sub ${VPCNameTag}-subnet-a
@@ -166,6 +212,61 @@ Resources:
       TopicArn: !Ref mySNSTopicForAlerts
       Endpoint: !Ref AlertsEmailEndpointRecipientAddress
       Protocol: email
+  #----------------------------------------------------------------------------
+  # This block is all related to creation of a Postgres database in RDS
+  #----------------------------------------------------------------------------
+  mySecurityGroupForRDSPostgres:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow connections to Postgres database port and pings
+      GroupName: sec-grp-for-rds-postgres-db
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: !Ref RdsPostgresPort
+        ToPort: !Ref RdsPostgresPort
+        CidrIp: 76.11.72.0/24
+      - IpProtocol: tcp
+        FromPort: !Ref RdsPostgresPort
+        ToPort: !Ref RdsPostgresPort
+        CidrIp: 172.98.67.0/24
+  mySecurityGroupForRDSPostgresIngressSelfRef:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    DependsOn: mySecurityGroupForRDSPostgres
+    Properties:
+      GroupId: !GetAtt mySecurityGroupForRDSPostgres.GroupId
+      # -1 means ALL
+      IpProtocol: -1
+      SourceSecurityGroupId: !GetAtt mySecurityGroupForRDSPostgres.GroupId
+  myRDSPostgresDatabaseInstance:
+      DeletionPolicy: Delete # Prevent a final snapshot from being created before database is deleted. Beware: YOU LOSE ALL DATA IN THE DATABASE!
+      UpdateReplacePolicy: Delete # Prevent a final snapshot from being created before database is replaced. Beware: YOU LOSE ALL DATA IN THE DATABASE!
+      Type: AWS::RDS::DBInstance
+      Properties:
+        AllocatedStorage: 20 # 20 is the minimum that is currently allowed when creating manually in the AWS Management Console
+        DBInstanceClass: db.t2.micro
+        DBInstanceIdentifier: stack-created-rds-postgres
+        DBName: !Ref RdsPostgresDatabaseName
+        DeleteAutomatedBackups: true
+        Engine: postgres
+        EngineVersion: !Ref RdsPostgresEngineVersion
+        MasterUsername: !Ref RdsPostgresMasterUsername
+        MasterUserPassword: !Ref RdsPostgresMasterUserPassword
+        Port: !Ref RdsPostgresPort
+        PreferredMaintenanceWindow: !Ref RdsPostgresPreferredMaintenanceWindow
+        StorageType: gp2
+        VPCSecurityGroups:
+        - !GetAtt mySecurityGroupForRDSPostgres.GroupId
+  myRDSPostgresRoute53CNAME:
+    Type: 'AWS::Route53::RecordSet'
+    DependsOn: myRDSPostgresDatabaseInstance
+    Properties:
+      HostedZoneName: 'adultmalehuman.org.'
+      Comment: DNS name for my Postgres database instance
+      Name: 'postgres.adultmalehuman.org'
+      TTL: '180'
+      Type: CNAME
+      ResourceRecords:
+      - !GetAtt 'myRDSPostgresDatabaseInstance.Endpoint.Address'
   #----------------------------------------------------------------------------
 
 
