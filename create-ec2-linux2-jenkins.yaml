@@ -34,10 +34,6 @@ Parameters:
     Description: VPC ID that this stack will be launched in.
     Type: AWS::EC2::VPC::Id
     AllowedPattern: "[a-z0-9-]*"
-  SubnetId:
-    Description: VPC Subnet that this stack will be launched in.
-    Type: AWS::EC2::Subnet::Id
-    AllowedPattern: "[a-z0-9-]*"
   KeyName:
     Description: Name of an existing EC2 KeyPair to enable SSH access to the instance(s).
     Type: AWS::EC2::KeyPair::KeyName
@@ -185,28 +181,24 @@ Resources:
 
     # Properties of the Instance that we are launching. Here we define things like EBS volumes, SG's, The AMI used, etc..
     Properties:
-      # Create the 25GB EBS volume that we will use for /var/lib/jenkins
+      # Create the EBS volume that we will use for /var/lib/jenkins
       BlockDeviceMappings:
         - DeviceName: /dev/sdb
           Ebs:
-            DeleteOnTermination: false
+            # TODO Figure out what to do about this. Do I need 25Gb for a tiny Jenkins server? Is there any advantage to keeping volume (or a snapshot of it)?
+            #DeleteOnTermination: false
+            DeleteOnTermination: true
             VolumeType: gp2
-            VolumeSize: 25
+            #VolumeSize: 25
+            VolumeSize: 15
       # Pull the Image or AMI from the RegionMap Map we defined earlier
       ImageId: !FindInMap
         - RegionMap
         - !Ref 'AWS::Region'
         - AMI
-      # Pull the Intance Type, Subnet, KeyName, etc from the Parameters we defined earlier
       InstanceType: !Ref InstanceType
-      NetworkInterfaces:
-        - AssociatePublicIpAddress: true
-          DeviceIndex: 0
-          DeleteOnTermination: true
-          SubnetId: !Ref SubnetId
-          # This defines the SG that we will place on the ENI, We will create the SG after the instance resource definition
-          GroupSet:
-            - !Ref ServerSecurityGroup
+      SecurityGroupIds:
+        - !Ref ServerSecurityGroup
       KeyName: !Ref KeyName
       Tags:
        - Key: Name
@@ -225,11 +217,29 @@ Resources:
         Count: '1'
         Timeout: PT15M
 
+  ElasticIpForJenkinsInstance:
+    Type: AWS::EC2::EIP
+    Properties:
+      InstanceId: !Ref JenkinsInstance
+
+  Route53ARecordForJenkinsInstance:
+    Type: AWS::Route53::RecordSet
+    DependsOn: ElasticIpForJenkinsInstance
+    Properties:
+      HostedZoneName: 'adultmalehuman.org.'
+      Comment: DNS name for my instance.
+      Name: 'jenkins.adultmalehuman.org'
+      Type: A
+      TTL: '300'
+      ResourceRecords:
+      - !GetAtt JenkinsInstance.PublicIp
+
   # Define the Security Group that will be appended to the ENI of the Instance we are creating.
   ServerSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Security Group that will be used for the Jenkins instance. Open ports 22, and the JenkinsPort
+      GroupName: sec-grp-for-jenkins-instance
+      GroupDescription: Security Group that will be used for the Jenkins instance. Open ports 22, and the JenkinsPort.
       VpcId: !Ref VpcId
       SecurityGroupIngress:
         - IpProtocol: tcp
@@ -252,6 +262,12 @@ Outputs:
   ServerAddress:
     Description: 'The public DNS address for this instance'
     Value: !GetAtt JenkinsInstance.PublicDnsName
+  InstanceRoute53URL:
+    Description: 'The public Route53 DNS URL for this instance'
+    Value: !Ref Route53ARecordForJenkinsInstance
+  JenkinsRoute53URL:
+    Description: 'The public Route53 DNS URL for this instance'
+    Value: !Sub http://${Route53ARecordForJenkinsInstance}:${JenkinsPort}/
   JenkinsPass:
     Description: Jenkins One Time Install Password
     Value: !Sub "ssh ec2-user@${JenkinsInstance.PublicIp} sudo cat /var/lib/jenkins/secrets/initialAdminPassword"
