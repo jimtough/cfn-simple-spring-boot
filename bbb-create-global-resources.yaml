@@ -110,7 +110,7 @@ Resources:
       CidrBlock: 192.168.2.0/24
       Tags:
        - Key: Name
-         Value: !Sub ${VPCNameTag}-subnet-a
+         Value: !Sub ${VPCNameTag}-subnet-b
       VpcId: !Ref myStackCreatedVPC
   myStackCreatedInternetGateway:
     Type: AWS::EC2::InternetGateway
@@ -192,6 +192,65 @@ Resources:
       Roles:
         -
           Ref: "myIAMRootRoleForEc2InstanceProfiles"
+  #----------------------------------------------------------------------------
+  # This block is all related to creation of an EC2 instance profile for an
+  # EC2 instance that executes CodeDeploy and needs S3 bucket read/list rights.
+  #----------------------------------------------------------------------------
+  myIAMRoleForEC2InstancesThatRunCodeDeploy:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+              Service:
+                - "ec2.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Path: "/"
+      RoleName: !Join ['', [!Ref 'AWS::Region', -, 'RoleForEc2InstancesThatRunCodeDeploy']]
+  myIAMPolicyForEC2InstancesThatRunCodeDeploy:
+    Type: "AWS::IAM::Policy"
+    Properties:
+      PolicyName: "CodeDeploy-EC2-permissions-policy"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Action:
+              - "s3:Get*"
+              - "s3:List*"
+            Resource: "*"
+      Roles:
+        -
+          Ref: "myIAMRoleForEC2InstancesThatRunCodeDeploy"
+  myIAMRoleForCodeDeployTutorial:
+    Type: "AWS::IAM::Role"
+    Properties:
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSCodeDeployRole
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+              Service:
+                - "codedeploy.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Path: "/"
+      RoleName: !Join ['', [!Ref 'AWS::Region', -, 'RoleForCodeDeployTutorial']]
+  # myIAMRootRoleInstanceProfile:
+  #   Type: "AWS::IAM::InstanceProfile"
+  #   Properties:
+  #     Path: "/"
+  #     Roles:
+  #       -
+  #         Ref: "myIAMRootRoleForEc2InstanceProfiles"
   #----------------------------------------------------------------------------
   # This block is all related to creation of an SNS topic for alerts
   #----------------------------------------------------------------------------
