@@ -126,6 +126,10 @@ Resources:
       Tags:
       - Key: Name
         Value: stack-created-ec2-instance
+      - Key: AppName
+        Value: simple-spring-boot
+      - Key: Env
+        Value: dev
       Volumes:
       - Device: /dev/sdf
         VolumeId: !Ref myVolume

@@ -201,10 +201,12 @@ Resources:
         - !Ref ServerSecurityGroup
       KeyName: !Ref KeyName
       Tags:
-       - Key: Name
-         Value: !Ref InstanceTagName
-       - Key: Environment
-         Value: dev
+      - Key: Name
+        Value: !Ref InstanceTagName
+      - Key: AppName
+        Value: jenkins
+      - Key: Env
+        Value: infrastructure
       # Use the user data to instantiate the cfn service, which will report back to CloudFormaton once the instance is set up
       UserData:
         Fn::Base64: !Sub |     # No more Fn::Join needed
