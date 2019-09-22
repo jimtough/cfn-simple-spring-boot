@@ -26,7 +26,7 @@ Resources:
         Location: !ImportValue GlobalDefaultS3Bucket
         NamespaceType: NONE
         Packaging: NONE
-        Path: foobar
+        Path: CodeBuild/builds
         Type: S3
       Cache:
         Type: NO_CACHE
@@ -35,6 +35,7 @@ Resources:
         Type: LINUX_CONTAINER
         ComputeType: BUILD_GENERAL1_SMALL
         Image: aws/codebuild/standard:2.0
+        PrivilegedMode: false
         # KEEP THIS - these examples will likely be useful later...
         # EnvironmentVariables:
         #   - Name: varName1
@@ -53,18 +54,15 @@ Resources:
         S3Logs:
           EncryptionDisabled: true
           Location: !Sub
-          - ${Bucket}/CodeBuild-logs
+          - ${Bucket}/CodeBuild/logs
           - { Bucket: !ImportValue GlobalDefaultS3Bucket }
           Status: ENABLED
       Source:
         GitCloneDepth: 0
         Location: https://git-codecommit.us-east-1.amazonaws.com/v1/repos/simple-spring-boot
         Type: CODECOMMIT
+      SourceVersion: refs/heads/master
       TimeoutInMinutes: 10
-      VpcConfig:
-        VpcId: !Ref CodeBuildVPC
-        Subnets: [!Ref CodeBuildSubnet]
-        SecurityGroupIds: [!Ref CodeBuildSecurityGroup]
   CodeBuildRole:
     Type: AWS::IAM::Role
     Properties:
@@ -83,6 +81,13 @@ Resources:
             Statement:
               - Action:
                 - 'logs:*'
+                - 's3:PutObject'
+                # TODO Figure out which of the codecommit permissions below are actually needed
+                - 'codecommit:GetRepository'
+                - 'codecommit:GitPull'
+                - 'codecommit:GetBranch'
+                - 'codecommit:GetCommit'
+                # TODO Figure out which of the ec2 permissions below are actually needed
                 - 'ec2:CreateNetworkInterface'
                 - 'ec2:DescribeNetworkInterfaces'
                 - 'ec2:DeleteNetworkInterface'
@@ -93,24 +98,3 @@ Resources:
                 - 'ec2:CreateNetworkInterfacePermission'
                 Effect: Allow
                 Resource: '*'
-  CodeBuildVPC:
-    Type: AWS::EC2::VPC
-    Properties:
-      CidrBlock: 10.0.0.0/16
-      EnableDnsSupport: 'true'
-      EnableDnsHostnames: 'true'
-      Tags:
-        - Key: name
-          Value: codebuild
-  CodeBuildSubnet:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId:
-        Ref: CodeBuildVPC
-      CidrBlock: 10.0.1.0/24
-  CodeBuildSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupName: Codebuild Internet Group
-      GroupDescription: 'CodeBuild SecurityGroup'
-      VpcId: !Ref CodeBuildVPC
