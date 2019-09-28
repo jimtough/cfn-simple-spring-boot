@@ -183,7 +183,7 @@ Resources:
             ln -s /mnt/sdf /var/app
 
             #-------------------------------------------------------
-            # NOTE: This block installs things needed by CodeDeploy
+            # This block installs things needed by CodeDeploy
             yum update -y
             yum install ruby -y
             yum install wget -y
@@ -191,6 +191,7 @@ Resources:
             wget https://aws-codedeploy-us-east-1.s3.us-east-1.amazonaws.com/latest/install
             chmod +x ./install
             ./install auto
+            # TODO delete the 'install' dir...
             #-------------------------------------------------------
 
 
