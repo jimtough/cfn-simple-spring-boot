@@ -24,8 +24,9 @@ Resources:
       Artifacts:
         EncryptionDisabled: true
         Location: !ImportValue GlobalDefaultS3Bucket
+        Name: simple-spring-boot-app.zip
         NamespaceType: NONE
-        Packaging: NONE
+        Packaging: ZIP
         Path: CodeBuild/builds
         Type: S3
       Cache:

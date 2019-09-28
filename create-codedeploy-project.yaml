@@ -1,0 +1,33 @@
+---
+
+#Parameters:
+
+
+Resources:
+  CodeDeployRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join ['', [!Ref 'AWS::Region', -, 'CodeDeployRole', -, !Ref 'AWS::StackName']]
+      AssumeRolePolicyDocument:
+        Statement:
+        - Action: ['sts:AssumeRole']
+          Effect: Allow
+          Principal:
+            Service: [codedeploy.amazonaws.com]
+        Version: '2012-10-17'
+      Path: /
+      Policies:
+        - PolicyName: MyInlineCodeDeployPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Action:
+                - 's3:GetObject'
+                # TODO Figure out which of the codedeploy permissions are actually needed
+                - 'codedeploy:*'
+                # TODO Figure out which of the log permissions are actually needed
+                - 'logs:*'
+                # TODO Figure out which of the ec2 permissions are actually needed
+                - 'ec2:*'
+                Effect: Allow
+                Resource: '*'

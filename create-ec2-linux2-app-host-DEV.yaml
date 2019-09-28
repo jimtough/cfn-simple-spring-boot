@@ -155,6 +155,8 @@ Resources:
             # Start cfn-init
             #/opt/aws/bin/cfn-init -v -s ${AWS::StackId} -r myEC2Instance --region ${AWS::Region} || error_exit 'Failed to run cfn-init'
             /opt/aws/bin/cfn-init -v -s ${AWS::StackName} -r myEC2Instance --region ${AWS::Region} || error_exit 'Failed to run cfn-init'
+
+            # TODO Should I move the following two calls further down, so the EC2 is only marked as initialized after EVERYTHING is set up?
             # Start up the cfn-hup daemon to listen for changes to the EC2 instance metadata
             /opt/aws/bin/cfn-hup -v || error_exit 'Failed to start cfn-hup'
             # All done so signal success
@@ -173,12 +175,26 @@ Resources:
             mount -a
 
             # Update to Java 8
-            sudo yum install -y java-1.8.0-openjdk.x86_64 || true
-            sudo /usr/sbin/alternatives --set java /usr/lib/jvm/jre-1.8.0-openjdk.x86_64/bin/java || true
-            sudo /usr/sbin/alternatives --set javac /usr/lib/jvm/jre-1.8.0-openjdk.x86_64/bin/javac || true
+            yum install -y java-1.8.0-openjdk.x86_64 || true
+            /usr/sbin/alternatives --set java /usr/lib/jvm/jre-1.8.0-openjdk.x86_64/bin/java || true
+            /usr/sbin/alternatives --set javac /usr/lib/jvm/jre-1.8.0-openjdk.x86_64/bin/javac || true
 
             # Create a symlink (/var/app) that points to /mnt/sdf
             ln -s /mnt/sdf /var/app
+
+            #-------------------------------------------------------
+            # NOTE: This block installs things needed by CodeDeploy
+            yum update -y
+            yum install ruby -y
+            yum install wget -y
+            cd /root
+            wget https://aws-codedeploy-us-east-1.s3.us-east-1.amazonaws.com/latest/install
+            chmod +x ./install
+            ./install auto
+            #-------------------------------------------------------
+
+
+
             # More the Simple Spring Boot app into /var/app
             mv /root/simple-spring-boot-app.jar /var/app/simple-spring-boot-app.jar
             chmod 755 /var/app/simple-spring-boot-app.jar
