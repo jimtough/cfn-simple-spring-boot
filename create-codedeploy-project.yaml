@@ -1,9 +1,54 @@
 ---
 
-#Parameters:
+Parameters:
+  CodeDeployApplicationName:
+    Type: String
+    Default: "codedeploy-app-simple-spring-boot"
+  CodeDeployDeploymentGroupName:
+    Type: String
+    Default: "codedeploy-deployment-group-simple-spring-boot"
 
 
 Resources:
+
+  CodeDeployApplication:
+    Type: AWS::CodeDeploy::Application
+    Properties:
+      ApplicationName: !Ref CodeDeployApplicationName
+      ComputePlatform: Server
+
+  CodeDeployDeploymentGroup:
+    Type: AWS::CodeDeploy::DeploymentGroup
+    Properties:
+      #AlarmConfiguration:
+      #  AlarmConfiguration
+      ApplicationName: !Ref CodeDeployApplication
+      #AutoRollbackConfiguration:
+      #  AutoRollbackConfiguration
+      #AutoScalingGroups:
+      #  - String
+      #Deployment:
+      #  Deployment
+      #DeploymentConfigName: String
+      DeploymentGroupName: !Ref CodeDeployDeploymentGroupName
+      #DeploymentStyle:
+      #  DeploymentType: IN_PLACE
+      Ec2TagFilters:
+        - Key: AppName
+          Value: simple-spring-boot
+          Type: KEY_AND_VALUE
+      #Ec2TagSet:
+      #  EC2TagSet
+      #LoadBalancerInfo:
+      #  LoadBalancerInfo
+      #OnPremisesInstanceTagFilters:
+      #  - TagFilter
+      #OnPremisesTagSet:
+      #  OnPremisesTagSet
+      ServiceRoleArn: !GetAtt CodeDeployRole.Arn
+      #TriggerConfigurations:
+      #  - TriggerConfig
+
   CodeDeployRole:
     Type: AWS::IAM::Role
     Properties:
