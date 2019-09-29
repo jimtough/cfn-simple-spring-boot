@@ -2,35 +2,45 @@
 Metadata:
   'AWS::CloudFormation::Interface':
     ParameterGroups:
-    # - Label:
-    #     default: 'Custom VPC parameters'
-    #   Parameters:
-    #   - VPCNameTag
+
+    - Label:
+        default: 'S3 bucket parameters'
+      Parameters:
+      - MyGeneralPurposeS3BucketFileExpirationInDays
+      - MyCodePipelineS3BucketFileExpirationInDays
+
     - Label:
         default: 'Alerting endpoints parameters'
       Parameters:
       - AlertsSMSEndpointPhoneNumber
       - AlertsEmailEndpointRecipientAddress
-    - Label:
-        default: 'RDS Postgres database parameters'
-      Parameters:
-      - RdsPostgresDatabaseName
-      - RdsPostgresEngineVersion
-      - RdsPostgresMasterUsername
-      - RdsPostgresMasterUserPassword
-      - RdsPostgresPort
-      - RdsPostgresPreferredMaintenanceWindow
+
+    # - Label:
+    #     default: 'RDS Postgres database parameters'
+    #   Parameters:
+    #   - RdsPostgresDatabaseName
+    #   - RdsPostgresEngineVersion
+    #   - RdsPostgresMasterUsername
+    #   - RdsPostgresMasterUserPassword
+    #   - RdsPostgresPort
+    #   - RdsPostgresPreferredMaintenanceWindow
+
 
 Parameters:
-  # VPCNameTag:
-  #   Description: Name tag that will be assigned to the VPC
-  #   Type: String
-  #   Default: stack-created-vpc
-  #   AllowedValues:
-  #   - stack-created-vpc
-  #   - my-vpc
-  #   - custom-vpc
-  #   - toothbrush
+  MyGeneralPurposeS3BucketFileExpirationInDays:
+    Description: How many days until a file in the general purpose S3 bucket is deleted?
+    Type: Number
+    MinValue: 1
+    # 5 x 365
+    MaxValue: 1825
+    Default: 730
+
+  MyCodePipelineS3BucketFileExpirationInDays:
+    Description: How many days until a file in the CodePipeline S3 bucket is deleted?
+    Type: Number
+    MinValue: 1
+    MaxValue: 29
+    Default: 29
 
   AlertsSMSEndpointPhoneNumber:
     Description: Phone number that will receive SMS text message alerts
@@ -75,84 +85,48 @@ Parameters:
 
 Resources:
   #----------------------------------------------------------------------------
-  # This block is all related to creation of a custom VPC.
-  # NOTE: I've found that using a non-default VPC can cause several problems
-  #       later on that are difficult to diagnose. For now, I will probably
-  #       not use this VPC. It was still fun to build it out. :)
+  # This block is related to creation of S3 buckets that will potentially be
+  # used for multiple purposes. I prefer to group these will my 'global'
+  # resources, rather than include them in individual stacks.
   #----------------------------------------------------------------------------
-  # myStackCreatedVPC:
-  #   Type: 'AWS::EC2::VPC'
-  #   Properties:
-  #     CidrBlock: 192.168.0.0/16
-  #     EnableDnsSupport: 'true'
-  #     EnableDnsHostnames: 'true'
-  #     InstanceTenancy: default
-  #     Tags:
-  #     - Key: Name
-  #       Value: !Ref VPCNameTag
-  #     - Key: creator-stack-name
-  #       Value: !Ref AWS::StackName
-  #     - Key: creator-stack-id
-  #       Value: !Ref AWS::StackId
-  # myStackCreatedSubnetA:
-  #   Type: AWS::EC2::Subnet
-  #   Properties:
-  #     AvailabilityZone: !Sub ${AWS::Region}a
-  #     CidrBlock: 192.168.1.0/24
-  #     Tags:
-  #     - Key: Name
-  #       Value: !Sub ${VPCNameTag}-subnet-a
-  #     VpcId: !Ref myStackCreatedVPC
-  # myStackCreatedSubnetB:
-  #   Type: AWS::EC2::Subnet
-  #   Properties:
-  #     AvailabilityZone: !Sub ${AWS::Region}b
-  #     CidrBlock: 192.168.2.0/24
-  #     Tags:
-  #      - Key: Name
-  #        Value: !Sub ${VPCNameTag}-subnet-b
-  #     VpcId: !Ref myStackCreatedVPC
-  # myStackCreatedInternetGateway:
-  #   Type: AWS::EC2::InternetGateway
-  #   Properties:
-  #     Tags:
-  #     - Key: Name
-  #       Value: !Sub ${VPCNameTag}-igw
-  # myStackCreatedRouteTable:
-  #   Type: AWS::EC2::RouteTable
-  #   Properties:
-  #     VpcId:
-  #       Ref: myStackCreatedVPC
-  #     Tags:
-  #     - Key: Name
-  #       Value: !Sub ${VPCNameTag}-rtb
-  # myStackCreatedRouteA:
-  #   Type: AWS::EC2::Route
-  #   Properties:
-  #      RouteTableId:
-  #        Ref: myStackCreatedRouteTable
-  #      DestinationCidrBlock: 0.0.0.0/0
-  #      GatewayId:
-  #        Ref: myStackCreatedInternetGateway
-  # myStackCreatedInternetGatewayAttachment:
-  #   Type: AWS::EC2::VPCGatewayAttachment
-  #   Properties:
-  #     VpcId: !Ref myStackCreatedVPC
-  #     InternetGatewayId: !Ref myStackCreatedInternetGateway
-  # myStackCreatedSubnetRouteTableAssociationA:
-  #   Type: AWS::EC2::SubnetRouteTableAssociation
-  #   Properties:
-  #     RouteTableId:
-  #       Ref: myStackCreatedRouteTable
-  #     SubnetId:
-  #       Ref: myStackCreatedSubnetA
-  # myStackCreatedSubnetRouteTableAssociationB:
-  #   Type: AWS::EC2::SubnetRouteTableAssociation
-  #   Properties:
-  #     RouteTableId:
-  #       Ref: myStackCreatedRouteTable
-  #     SubnetId:
-  #       Ref: myStackCreatedSubnetB
+  MyGeneralPurposeS3Bucket:
+    Type: AWS::S3::Bucket
+    # Protect from accidental stack deletion
+    DeletionPolicy: Retain
+    Properties:
+      BucketName: general-purpose-s3-bucket
+      LifecycleConfiguration:
+        Rules:
+        - Id: general-purpose-bucket-lifecycle-rules
+          Status: Enabled
+          ExpirationInDays: !Ref MyGeneralPurposeS3BucketFileExpirationInDays
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+      Tags:
+        - Key: "foo"
+          Value: "bar"
+  MyCodePipelineS3Bucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Delete
+    Properties:
+      BucketName: code-pipeline-s3-bucket
+      LifecycleConfiguration:
+        Rules:
+        - Id: code-pipeline-bucket-lifecycle-rules
+          Status: Enabled
+          ExpirationInDays: !Ref MyCodePipelineS3BucketFileExpirationInDays
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+      Tags:
+        - Key: "foo"
+          Value: "bar"
+
   #----------------------------------------------------------------------------
   # This block is all related to creation of a reusable EC2 instance profile.
   #----------------------------------------------------------------------------
@@ -196,6 +170,7 @@ Resources:
   # This block is all related to creation of an EC2 instance profile for an
   # EC2 instance that executes CodeDeploy and needs S3 bucket read/list rights.
   #----------------------------------------------------------------------------
+  # TODO Remove this when convenient...
   myIAMRoleForEC2InstancesThatRunCodeDeploy:
     Type: "AWS::IAM::Role"
     Properties:
@@ -211,6 +186,7 @@ Resources:
               - "sts:AssumeRole"
       Path: "/"
       RoleName: !Join ['', [!Ref 'AWS::Region', -, 'RoleForEc2InstancesThatRunCodeDeploy']]
+  # TODO Remove this when convenient...
   myIAMPolicyForEC2InstancesThatRunCodeDeploy:
     Type: "AWS::IAM::Policy"
     Properties:
@@ -227,6 +203,7 @@ Resources:
       Roles:
         -
           Ref: "myIAMRoleForEC2InstancesThatRunCodeDeploy"
+  # TODO Remove this when convenient...
   myIAMRoleForCodeDeployTutorial:
     Type: "AWS::IAM::Role"
     Properties:
@@ -330,21 +307,17 @@ Resources:
 
 
 Outputs:
-  # MyStackCreatedVPCOutput:
-  #   Value: !Ref myStackCreatedVPC
-  #   Description: VPC id of my stack-created VPC
-  #   Export:
-  #     Name: StackCreatedVPC
-  # MyStackCreatedSubnetAOutput:
-  #   Value: !Ref myStackCreatedSubnetA
-  #   Description: Subnet id of my stack-created Subnet A
-  #   Export:
-  #     Name: StackCreatedSubnetA
-  # MyStackCreatedSubnetBOutput:
-  #   Value: !Ref myStackCreatedSubnetB
-  #   Description: Subnet id of my stack-created Subnet B
-  #   Export:
-  #     Name: StackCreatedSubnetB
+  myCodePipelineS3BucketOutput:
+    Description: My S3 bucket for CodeBuild, CodeDeploy and CodePipeline
+    Value: !Ref MyCodePipelineS3Bucket
+    Export:
+      Name: CodePipelineS3Bucket
+  myGeneralPurposeS3BucketOutput:
+    Description: My general purpose S3 bucket for miscellaneous stuff
+    Value: !Ref MyGeneralPurposeS3Bucket
+    Export:
+      Name: GeneralPurposeS3Bucket
+
   myIAMRootRoleInstanceProfileNameOutput:
     Value: !Ref myIAMRootRoleInstanceProfile
     Description: Id of my stack-created EC2 instance profile that grants full access rights
@@ -355,6 +328,7 @@ Outputs:
     Description: ARN of my stack-created EC2 instance profile that grants full access rights
     Export:
       Name: IAMRootRoleInstanceProfileArn
+
   mySNSTopicForAlertsArnOutput:
     Value: !Ref mySNSTopicForAlerts
     Description: ARN of my stack-created SNS topic that is used for publishing alerts

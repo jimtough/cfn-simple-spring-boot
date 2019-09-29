@@ -23,11 +23,11 @@ Resources:
       ServiceRole: !GetAtt CodeBuildRole.Arn
       Artifacts:
         EncryptionDisabled: true
-        Location: !ImportValue GlobalDefaultS3Bucket
+        Location: !ImportValue CodePipelineS3Bucket
         Name: simple-spring-boot-app.zip
         NamespaceType: NONE
         Packaging: ZIP
-        Path: CodeBuild/builds
+        Path: !Sub "CodeBuild/${CodeBuildProjectName}/builds"
         Type: S3
       Cache:
         Type: NO_CACHE
@@ -55,8 +55,8 @@ Resources:
         S3Logs:
           EncryptionDisabled: true
           Location: !Sub
-          - ${Bucket}/CodeBuild/logs
-          - { Bucket: !ImportValue GlobalDefaultS3Bucket }
+          - ${Bucket}/CodeBuild/${CodeBuildProjectName}/logs
+          - { Bucket: !ImportValue CodePipelineS3Bucket }
           Status: ENABLED
       Source:
         GitCloneDepth: 0
