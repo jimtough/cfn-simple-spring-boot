@@ -269,7 +269,6 @@ Resources:
   myCloudwatchAlarmForCPUUtilization:
     Type: AWS::CloudWatch::Alarm
     # Do not generate alerts during EC2 initialization - wait until Route53 is set up and the instance can be reached from the internet
-    DependsOn: myRoute53DNSRecord
     Properties:
       AlarmDescription: CPU alarm for my EC2 instance
       #AlarmName: alarm-for-my-ec2-cpu-usage
@@ -279,8 +278,8 @@ Resources:
       MetricName: CPUUtilization
       Namespace: AWS/EC2
       Statistic: Average
-      Period: '60'
-      EvaluationPeriods: '5'
+      Period: '300'
+      EvaluationPeriods: '2'
       Threshold: '25'
       ComparisonOperator: GreaterThanThreshold
       Unit: Percent
