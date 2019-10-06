@@ -216,10 +216,10 @@ Resources:
       GroupDescription: Allow SSH and HTTP connections from anywhere
       GroupName: sec-grp-for-ssh-and-http-to-my-ec2
       SecurityGroupIngress:
-      - IpProtocol: tcp
-        FromPort: 8080
-        ToPort: 8080
-        CidrIp: 0.0.0.0/0
+      # - IpProtocol: tcp
+      #   FromPort: 8080
+      #   ToPort: 8080
+      #   CidrIp: 0.0.0.0/0
       - IpProtocol: tcp
         FromPort: 80
         ToPort: 80
@@ -228,13 +228,11 @@ Resources:
         FromPort: 22
         ToPort: 22
         CidrIp: 0.0.0.0/0
-      # enable ping (should probably remove later)
-      - IpProtocol: icmp
-        FromPort: 8
-        ToPort: -1
-        CidrIp: 0.0.0.0/0
-      # Stop using my custom VPC - it created too many access issues
-      #VpcId: !ImportValue StackCreatedVPC
+      # enable ping
+      # - IpProtocol: icmp
+      #   FromPort: 8
+      #   ToPort: -1
+      #   CidrIp: 0.0.0.0/0
 
   mySecurityGroupIngressSelfReference:
     Type: 'AWS::EC2::SecurityGroupIngress'
@@ -261,8 +259,7 @@ Resources:
       #Name: !Join ['', [!Ref 'myEC2Instance', ., !Ref 'AWS::Region', ., 'adultmalehuman.org']]
       Name: 'ec2.adultmalehuman.org'
       Type: A
-      #TTL: '900'
-      TTL: '300'
+      TTL: '1800'
       ResourceRecords:
       - !GetAtt myEC2Instance.PublicIp
 
