@@ -102,6 +102,14 @@ Resources:
               test: "test ! -e ~/test.txt"
               ignoreErrors: "false"
             cmd02:
+              # accepting incoming traffic on port 80 (HTTP)
+              command: "iptables -A INPUT -i eth0 -p tcp --dport 80 -j ACCEPT"
+              cwd: "~"
+            cmd03:
+              # redirect HTTP traffic to the Spring Boot app listening on port 8888
+              command: "iptables -A PREROUTING -t nat -i eth0 -p tcp --dport 80 -j REDIRECT --to-port 8888"
+              cwd: "~"
+            cmd04:
               # Copy Simple Spring Boot app from S3 bucket into /root
               # temporarily, and then move it to its final destination
               # via UserData commands
