@@ -1,0 +1,259 @@
+---
+
+Parameters:
+  CodePipelineName:
+    Type: String
+    Default: 'codepipeline-simple-spring-boot'
+  CodeCommitBranch:
+    Type: String
+    Default: 'master'
+  CodeCommitRepo:
+    Type: String
+    Default: 'simple-spring-boot'
+  CodeBuildProjectName:
+    Type: String
+    Default: 'codebuild-project-in-codepipeline'
+  CodeBuildProjectDescription:
+    Type: String
+    Default: 'CodeBuild for simple-spring-boot app in CodePipeline'
+  CodeBuildProjectCloudWatchLogsGroupName:
+    Type: String
+    Default: 'CodeBuild'
+  CodeBuildProjectCloudWatchLogsStreamName:
+    Type: String
+    Default: 'simple-spring-boot-pipeline'
+  CodeDeployApplicationName:
+    Type: String
+    Default: 'codedeploy-application-in-codepipeline'
+  CodeDeployDeploymentGroupName:
+    Type: String
+    Default: 'codedeploy-deploymentgroup-in-codepipeline'
+
+
+Resources:
+
+  CodePipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      ArtifactStore:
+        Type: S3
+        Location: !ImportValue CodePipelineS3Bucket
+      Name: !Ref CodePipelineName
+      RestartExecutionOnUpdate: false
+      RoleArn: !GetAtt CodePipelineRole.Arn
+      Stages:
+      - Name: 'Stage-1'
+        Actions:
+        - Name: 'Action-1A'
+          ActionTypeId:
+            Category: Source
+            Provider: CodeCommit
+            Owner: AWS
+            Version: 1
+          #InputArtifacts: []
+          OutputArtifacts:
+          - Name: 'Action-1A-Output'
+          Configuration:
+            PollForSourceChanges: 'true'
+            BranchName: !Ref CodeCommitBranch
+            RepositoryName: !Ref CodeCommitRepo
+          RunOrder: 1
+          #RoleArn: !GetAtt SomeRole.Arn
+      - Name: 'Stage-2'
+        Actions:
+        - Name: 'Action-2A'
+          ActionTypeId:
+            Category: Build
+            Provider: CodeBuild
+            Owner: AWS
+            Version: 1
+          Configuration:
+            ProjectName: !Ref CodeBuildProject
+          RunOrder: 1
+          InputArtifacts:
+          - Name: 'Action-1A-Output'
+          OutputArtifacts:
+          - Name: 'Action-2A-Output'
+      - Name: 'Stage-3'
+        Actions:
+        - Name: 'Action-3A'
+          ActionTypeId:
+            Category: Deploy
+            Provider: CodeDeploy
+            Owner: AWS
+            Version: 1
+          Configuration:
+            ApplicationName: !Ref CodeDeployApplicationName
+            DeploymentGroupName: !Ref CodeDeployDeploymentGroupName
+          RunOrder: 1
+          InputArtifacts:
+          - Name: 'Action-2A-Output'
+          #OutputArtifacts:
+          #- Name: 'Action-2A-Output'
+
+
+  CodePipelineRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      RoleName: !Join ['', [!Ref 'AWS::Region', -, 'CodePipelineRole', -, !Ref 'AWS::StackName']]
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Action:
+            - 'sts:AssumeRole'
+            Effect: Allow
+            Principal:
+              Service:
+              - codepipeline.amazonaws.com
+      Path: /
+      ManagedPolicyArns:
+        - !Ref CodePipelinePolicy
+
+  CodeBuildRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      RoleName: !Join ['', [!Ref 'AWS::Region', -, 'CodeBuildRole', -, !Ref 'AWS::StackName']]
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Action:
+            - 'sts:AssumeRole'
+            Effect: Allow
+            Principal:
+              Service:
+              - codebuild.amazonaws.com
+      Path: /
+      ManagedPolicyArns:
+        - !Ref CodePipelinePolicy
+
+  CodeDeployRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      RoleName: !Join ['', [!Ref 'AWS::Region', -, 'CodeDeployRole', -, !Ref 'AWS::StackName']]
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Action:
+            - 'sts:AssumeRole'
+            Effect: Allow
+            Principal:
+              Service:
+              - codedeploy.amazonaws.com
+      Path: /
+      ManagedPolicyArns:
+        - !Ref CodePipelinePolicy
+
+  CodePipelinePolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Description: 'This policy grants permissions to a service role to enable Codepipeline to use multiple AWS Resources on the users behalf'
+      Path: "/"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Resource: "*"
+            Effect: "Allow"
+            Condition: {}
+            Action:
+              - 'sts:AssumeRole'
+              - autoscaling:*
+              - cloudwatch:*
+              - cloudtrail:*
+              - cloudformation:*
+              - codebuild:*
+              - codecommit:*
+              - codedeploy:*
+              - codepipeline:*
+              - ec2:*
+              - ecs:*
+              - ecr:*
+              - elasticbeanstalk:*
+              - elasticloadbalancing:*
+              - iam:*
+              - lambda:*
+              - logs:*
+              - rds:*
+              - s3:*
+              - sns:*
+              - ssm:*
+              - sqs:*
+              - kms:*
+
+  CodeBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Ref CodeBuildProjectName
+      ServiceRole: !GetAtt CodeBuildRole.Arn
+      Artifacts:
+        Type: CODEPIPELINE
+      Cache:
+        Type: NO_CACHE
+      Description: !Ref CodeBuildProjectDescription
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:2.0
+        PrivilegedMode: false
+        # KEEP THIS - these examples will likely be useful later...
+        # EnvironmentVariables:
+        #   - Name: varName1
+        #     Value: varValue1
+        #   - Name: varName2
+        #     Value: varValue2
+        #     Type: PLAINTEXT
+        #   - Name: varName3
+        #     Value: /CodeBuild/testParameter
+        #     Type: PARAMETER_STORE
+      LogsConfig:
+        CloudWatchLogs:
+          GroupName: !Ref CodeBuildLogGroup
+          Status: ENABLED
+          StreamName: !Ref CodeBuildProjectCloudWatchLogsStreamName
+      Source:
+        Type: CODEPIPELINE
+      SourceVersion: refs/heads/master
+      TimeoutInMinutes: 10
+
+  CodeBuildLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Ref CodeBuildProjectCloudWatchLogsGroupName
+      RetentionInDays: 14
+
+  CodeDeployApplication:
+    Type: AWS::CodeDeploy::Application
+    Properties:
+      ApplicationName: !Ref CodeDeployApplicationName
+      ComputePlatform: Server
+
+  CodeDeployDeploymentGroup:
+    Type: AWS::CodeDeploy::DeploymentGroup
+    Properties:
+      #AlarmConfiguration:
+      #  AlarmConfiguration
+      ApplicationName: !Ref CodeDeployApplication
+      #AutoRollbackConfiguration:
+      #  AutoRollbackConfiguration
+      #AutoScalingGroups:
+      #  - String
+      #Deployment:
+      #  Deployment
+      #DeploymentConfigName: String
+      DeploymentGroupName: !Ref CodeDeployDeploymentGroupName
+      #DeploymentStyle:
+      #  DeploymentType: IN_PLACE
+      Ec2TagFilters:
+        - Key: AppName
+          Value: simple-spring-boot
+          Type: KEY_AND_VALUE
+      #Ec2TagSet:
+      #  EC2TagSet
+      #LoadBalancerInfo:
+      #  LoadBalancerInfo
+      #OnPremisesInstanceTagFilters:
+      #  - TagFilter
+      #OnPremisesTagSet:
+      #  OnPremisesTagSet
+      ServiceRoleArn: !GetAtt CodeDeployRole.Arn
+      #TriggerConfigurations:
+      #  - TriggerConfig
